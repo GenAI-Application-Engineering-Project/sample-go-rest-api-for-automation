@@ -31,9 +31,15 @@ Fig 1.0: High Level REST API Component Diagram
 Task 1: Project Setup
 Clone Repo or Create Project Locally and setup the following
 1. Initialize the go project
-    - Run the command go mod init <module-name>
-    - Example: go mod init github.com/yourusername/projectname
-2. Github Workflows
-3. Gitignore
-4. Golangci
+    - Run the command below, replacing <module-name> with your module name
+    ```
+    go mod init <module-name>
+    ```
+2. Install golangci-lint
+    ```
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    ```
+3. Github Workflows
+4. Gitignore
 5. Makefile
+6. Create main.go file

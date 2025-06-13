@@ -16,7 +16,7 @@ all: build
 # Build the CLI
 build:
 	@mkdir -p $(BIN_DIR)
-	$(GO_BUILD) -o $(BIN_DIR)/$(BINARY_NAME)
+	$(GO_BUILD) -o $(BIN_DIR)/$(BINARY_NAME) ./cmd/server
 
 # Clean up the build artifacts
 clean:
@@ -38,6 +38,12 @@ test-rpt: test
 ci-coverage: test
 	@go tool cover -func=coverage.out
 	@echo "Coverage report generated."
+
+lint:
+	golangci-lint run
+
+lint-v:
+	golangci-lint run -v
 
 # Help message to describe the targets
 help:
