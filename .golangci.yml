@@ -3,3 +3,6 @@ linters:
     - gofmt
     - goimports
     - gofumpt
+    - govet
+    - staticcheck
+    - revive
