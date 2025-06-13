@@ -9,5 +9,9 @@
     "ryanluker",
     "staticcheck",
     "yourusername"
-  ]
+  ],
+  "yaml.schemas": {
+    "": ["**/.golangci.yml"]
+  },
+  "yaml.validate": false
 }
