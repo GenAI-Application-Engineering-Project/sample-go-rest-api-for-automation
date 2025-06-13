@@ -4,8 +4,10 @@
     "gofumpt",
     "goimports",
     "Golangci",
+    "govet",
     "projectname",
     "ryanluker",
+    "staticcheck",
     "yourusername"
   ]
 }
