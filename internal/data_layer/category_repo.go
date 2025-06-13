@@ -2,24 +2,20 @@ package datalayer
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-)
-
-const (
-	getCategoryByID = "GetCategoryByID"
-	listCategories  = "ListCategories"
-	createCategory  = "CreateCategory"
-	updateCategory  = "UpdateCategory"
-	deleteCategory  = "DeleteCategory"
 )
 
 type Category struct {
 	ID          uuid.UUID `db:"id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`
+	CreatedAt   time.Time `db:"created_at"`
 }
 
 type CategoryRepo struct {
@@ -28,7 +24,7 @@ type CategoryRepo struct {
 
 type CategoryRepoInterface interface {
 	GetCategoryByID(ctx context.Context, id uuid.UUID) (*Category, error)
-	ListCategories(ctx context.Context, id uuid.UUID, limit int) ([]*Category, error)
+	ListCategories(ctx context.Context, createdAfter time.Time, limit int) ([]*Category, error)
 	CreateCategory(ctx context.Context, category *Category) error
 	UpdateCategory(ctx context.Context, category *Category) error
 	DeleteCategory(ctx context.Context, id uuid.UUID) error
@@ -41,41 +37,43 @@ func NewCategoryRepo(db *sqlx.DB) CategoryRepoInterface {
 
 // GetCategoryByID fetches a category by its ID
 func (r *CategoryRepo) GetCategoryByID(ctx context.Context, id uuid.UUID) (*Category, error) {
-	query := `SELECT id, name, description FROM categories WHERE id = :id`
-	params := map[string]any{"id": id}
-
-	stmt, err := r.db.NamedQueryContext(ctx, query, params)
-	if err != nil {
-		return nil, fmt.Errorf(errMsg, getCategoryByID, errDBFailure, err)
-	}
-	defer stmt.Close()
+	const query = `SELECT id, name, description FROM categories WHERE id = $1`
 
 	var category Category
-	if stmt.Next() {
-		if err := stmt.StructScan(&category); err != nil {
-			return nil, fmt.Errorf(errMsg, getCategoryByID, errDBFailure, err)
+	err := r.db.GetContext(ctx, &category, query, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("getCategoryByID: %w: id `%s`", ErrNotFound, id)
 		}
-		return &category, nil
+		return nil, fmt.Errorf("getCategoryByID: query failed: %w", err)
 	}
-	return nil, fmt.Errorf(errMsg, getCategoryByID, errNotFound, nil)
+
+	return &category, nil
 }
 
 // ListCategories fetches all categories from the database
 func (r *CategoryRepo) ListCategories(
 	ctx context.Context,
-	id uuid.UUID,
+	createdAfter time.Time, // pagination cursor
 	limit int,
 ) ([]*Category, error) {
 	limit = checkLimit(limit)
 	args := map[string]any{
-		"id":    id,
+		"created_at":    createdAfter,
 		"limit": limit,
 	}
 
-	query := `SELECT id, name, description FROM categories WHERE id > :id ORDER BY id ASC LIMIT :limit`
+	const query = `
+		SELECT id, name, description, created_at
+		FROM categories
+		WHERE created_at > :created_at
+		ORDER BY created_at ASC
+		LIMIT :limit
+	`
+	
 	stmt, err := r.db.NamedQueryContext(ctx, query, args)
 	if err != nil {
-		return nil, fmt.Errorf(errMsg, listCategories, errDBFailure, err)
+		return nil, fmt.Errorf("listCategories: query failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -83,7 +81,7 @@ func (r *CategoryRepo) ListCategories(
 	for stmt.Next() {
 		var category Category
 		if err := stmt.StructScan(&category); err != nil {
-			return nil, fmt.Errorf(errMsg, listCategories, errDBFailure, err)
+			return nil, fmt.Errorf("listCategories: scan failed: %w", err)
 		}
 		categories = append(categories, &category)
 	}
@@ -92,32 +90,32 @@ func (r *CategoryRepo) ListCategories(
 
 // CreateCategory inserts a new category into the database
 func (r *CategoryRepo) CreateCategory(ctx context.Context, category *Category) error {
-	query := `INSERT INTO categories(id, name, description) VALUES(:id, :name, :description)`
+	const query = `INSERT INTO categories(id, name, description) VALUES(:id, :name, :description)`
 	result, err := r.db.NamedExecContext(ctx, query, category)
 	if err != nil {
-		return fmt.Errorf(errMsg, createCategory, errDBFailure, err)
+		return fmt.Errorf("createCategory: db insert failed: %w", err)
 	}
-	return checkRowsAffected(result, createCategory)
+	return checkRowsAffected(result, "createCategory")
 }
 
 // UpdateCategory modifies an existing category
 func (r *CategoryRepo) UpdateCategory(ctx context.Context, category *Category) error {
-	query := `UPDATE categories SET name=:name, description=:description WHERE id=:id`
+	const query = `UPDATE categories SET name=:name, description=:description WHERE id=:id`
 	result, err := r.db.NamedExecContext(ctx, query, category)
 	if err != nil {
-		return fmt.Errorf(errMsg, updateCategory, errDBFailure, err)
+		return fmt.Errorf("updateCategory: db update failed: %w", err)
 	}
-	return checkRowsAffected(result, updateCategory)
+	return checkRowsAffected(result, "UpdateCategory")
 }
 
 // DeleteCategory removes a category by its ID
 func (r *CategoryRepo) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM categories WHERE id=:id`
+	const query = `DELETE FROM categories WHERE id=:id`
 	params := map[string]any{"id": id}
 
 	result, err := r.db.NamedExecContext(ctx, query, params)
 	if err != nil {
-		return fmt.Errorf(errMsg, deleteCategory, errDBFailure, err)
+		return fmt.Errorf("deleteCategory: db delete failed: %w", err)
 	}
-	return checkRowsAffected(result, deleteCategory)
+	return checkRowsAffected(result, "deleteCategory")
 }

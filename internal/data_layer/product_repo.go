@@ -52,20 +52,20 @@ func (r *ProductRepo) GetProductByID(ctx context.Context, id uuid.UUID) (*Produc
 
 	stmt, err := r.db.NamedQueryContext(ctx, query, params)
 	if err != nil {
-		return nil, fmt.Errorf(errMsg, getProductByID, errDBFailure, err)
+		return nil, fmt.Errorf(errMsg, getProductByID, ErrDBFailure, err)
 	}
 	defer stmt.Close()
 
 	var product Product
 	if stmt.Next() {
 		if err := stmt.StructScan(&product); err != nil {
-			return nil, fmt.Errorf(errMsg, getProductByID, errDBFailure, err)
+			return nil, fmt.Errorf(errMsg, getProductByID, ErrDBFailure, err)
 		}
 		return &product, nil
 	}
 
 	// Product not found
-	return nil, fmt.Errorf(errMsg, getProductByID, errNotFound, nil)
+	return nil, fmt.Errorf(errMsg, getProductByID, ErrNotFound, nil)
 }
 
 // ListProducts fetches all products from the database
@@ -83,7 +83,7 @@ func (r *ProductRepo) ListProducts(
 	query := `SELECT id, name, description, image_url, category_id, price, quantity, created_at FROM products WHERE id > :id ORDER BY id ASC LIMIT :limit`
 	stmt, err := r.db.NamedQueryContext(ctx, query, args)
 	if err != nil {
-		return nil, fmt.Errorf(errMsg, listProducts, errDBFailure, err)
+		return nil, fmt.Errorf(errMsg, listProducts, ErrDBFailure, err)
 	}
 	defer stmt.Close()
 
@@ -91,7 +91,7 @@ func (r *ProductRepo) ListProducts(
 	for stmt.Next() {
 		var product Product
 		if err := stmt.StructScan(&product); err != nil {
-			return nil, fmt.Errorf(errMsg, listProducts, errDBFailure, err)
+			return nil, fmt.Errorf(errMsg, listProducts, ErrDBFailure, err)
 		}
 		products = append(products, &product)
 	}
@@ -103,9 +103,9 @@ func (r *ProductRepo) CreateProduct(ctx context.Context, product *Product) error
 	query := `INSERT INTO products(id, name, description, image_url, category_id, price, quantity, created_at) VALUES(:id, :name, :description, :image_url, :category_id, :price, :quantity, :created_at)`
 	result, err := r.db.NamedExecContext(ctx, query, product)
 	if err != nil {
-		return fmt.Errorf(errMsg, createProduct, errDBFailure, err)
+		return fmt.Errorf(errMsg, createProduct, ErrDBFailure, err)
 	}
-	return checkRowsAffected(result, createCategory)
+	return checkRowsAffected(result, "CreateProduct")
 }
 
 // UpdateProduct modifies an existing product
@@ -113,9 +113,9 @@ func (r *ProductRepo) UpdateProduct(ctx context.Context, product *Product) error
 	query := `UPDATE products SET name=:name, description=:description, image_url=:image_url,category_id=:category_id, price=:price, quantity=:quantity, created_at=:created_at WHERE id=:id`
 	result, err := r.db.NamedExecContext(ctx, query, product)
 	if err != nil {
-		return fmt.Errorf(errMsg, updateProduct, errDBFailure, err)
+		return fmt.Errorf(errMsg, updateProduct, ErrDBFailure, err)
 	}
-	return checkRowsAffected(result, updateCategory)
+	return checkRowsAffected(result, "UpdateProduct")
 }
 
 // DeleteProduct removes a product by its ID
@@ -127,7 +127,7 @@ func (r *ProductRepo) DeleteProduct(ctx context.Context, id uuid.UUID) error {
 
 	result, err := r.db.NamedExecContext(ctx, query, params)
 	if err != nil {
-		return fmt.Errorf(errMsg, deletedProduct, errDBFailure, err)
+		return fmt.Errorf(errMsg, deletedProduct, ErrDBFailure, err)
 	}
 	return checkRowsAffected(result, deletedProduct)
 }

@@ -13,8 +13,8 @@ const (
 )
 
 var (
-	errNotFound  = errors.New("record not found")
-	errDBFailure = errors.New("database failure")
+	ErrNotFound  = errors.New("not found")
+	ErrDBFailure = errors.New("database failure")
 )
 
 func checkLimit(limit int) int {
@@ -29,9 +29,9 @@ func checkLimit(limit int) int {
 func checkRowsAffected(result sql.Result, funcName string) error {
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf(errMsg, funcName, errDBFailure, err)
+		return fmt.Errorf(errMsg, funcName, ErrDBFailure, err)
 	} else if rows == 0 {
-		return fmt.Errorf(errMsg, funcName, errNotFound, nil)
+		return fmt.Errorf(errMsg, funcName, ErrNotFound, nil)
 	}
 
 	return nil
