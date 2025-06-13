@@ -23,7 +23,7 @@ clean:
 	rm -f $(BINARY_NAME)
 
 run: build
-	@ $(BIN_DIR)/$(BINARY_NAME) --src ./examples
+	@ $(BIN_DIR)/$(BINARY_NAME)
 
 # Run unit tests (if you have any)
 test:
