@@ -45,7 +45,7 @@ func (r *CategoryRepo) GetCategoryByID(ctx context.Context, id uuid.UUID) (*Cate
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("getCategoryByID: %w: id `%s`", ErrNotFound, id)
 		}
-		return nil, fmt.Errorf("getCategoryByID: query failed: %w", err)
+		return nil, fmt.Errorf("getCategoryByID: select query failed: %w", err)
 	}
 
 	return &category, nil
@@ -59,8 +59,8 @@ func (r *CategoryRepo) ListCategories(
 ) ([]*Category, error) {
 	limit = checkLimit(limit)
 	args := map[string]any{
-		"created_at":    createdAfter,
-		"limit": limit,
+		"created_at": createdAfter,
+		"limit":      limit,
 	}
 
 	const query = `
@@ -70,10 +70,10 @@ func (r *CategoryRepo) ListCategories(
 		ORDER BY created_at ASC
 		LIMIT :limit
 	`
-	
+
 	stmt, err := r.db.NamedQueryContext(ctx, query, args)
 	if err != nil {
-		return nil, fmt.Errorf("listCategories: query failed: %w", err)
+		return nil, fmt.Errorf("listCategories: select query failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -93,7 +93,7 @@ func (r *CategoryRepo) CreateCategory(ctx context.Context, category *Category) e
 	const query = `INSERT INTO categories(id, name, description) VALUES(:id, :name, :description)`
 	result, err := r.db.NamedExecContext(ctx, query, category)
 	if err != nil {
-		return fmt.Errorf("createCategory: db insert failed: %w", err)
+		return fmt.Errorf("createCategory: insert query failed: %w", err)
 	}
 	return checkRowsAffected(result, "createCategory")
 }
@@ -103,19 +103,17 @@ func (r *CategoryRepo) UpdateCategory(ctx context.Context, category *Category) e
 	const query = `UPDATE categories SET name=:name, description=:description WHERE id=:id`
 	result, err := r.db.NamedExecContext(ctx, query, category)
 	if err != nil {
-		return fmt.Errorf("updateCategory: db update failed: %w", err)
+		return fmt.Errorf("updateCategory: update query failed: %w", err)
 	}
 	return checkRowsAffected(result, "UpdateCategory")
 }
 
 // DeleteCategory removes a category by its ID
 func (r *CategoryRepo) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	const query = `DELETE FROM categories WHERE id=:id`
-	params := map[string]any{"id": id}
-
-	result, err := r.db.NamedExecContext(ctx, query, params)
+	const query = `DELETE FROM categories WHERE id = $1`
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("deleteCategory: db delete failed: %w", err)
+		return fmt.Errorf("deleteCategory: delete query failed: %w", err)
 	}
 	return checkRowsAffected(result, "deleteCategory")
 }

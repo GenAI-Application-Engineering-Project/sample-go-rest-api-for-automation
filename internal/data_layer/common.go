@@ -9,12 +9,10 @@ import (
 const (
 	maxLimit = 1000
 	minLimit = 1
-	errMsg   = "%s failed: %w (db error: %v)"
 )
 
 var (
-	ErrNotFound  = errors.New("not found")
-	ErrDBFailure = errors.New("database failure")
+	ErrNotFound = errors.New("not found")
 )
 
 func checkLimit(limit int) int {
@@ -26,13 +24,13 @@ func checkLimit(limit int) int {
 	return limit
 }
 
-func checkRowsAffected(result sql.Result, funcName string) error {
+func checkRowsAffected(result sql.Result, op string) error {
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf(errMsg, funcName, ErrDBFailure, err)
-	} else if rows == 0 {
-		return fmt.Errorf(errMsg, funcName, ErrNotFound, nil)
+		return fmt.Errorf("%s: failed to get rows affected: %w", op, err)
 	}
-
+	if rows == 0 {
+		return fmt.Errorf("%s: no rows affected: %w", op, ErrNotFound)
+	}
 	return nil
 }
