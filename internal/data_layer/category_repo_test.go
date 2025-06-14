@@ -186,7 +186,8 @@ func TestCreateCategory(t *testing.T) {
 	t.Run("should return error if insert query fails", func(t *testing.T) {
 		dbErr := errors.New("database error")
 		mock.ExpectExec(insertQuery).
-			WithArgs(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).WillReturnError(dbErr)
+			WithArgs(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
+			WillReturnError(dbErr)
 
 		err := repo.CreateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
@@ -196,7 +197,8 @@ func TestCreateCategory(t *testing.T) {
 
 	t.Run("should return not found if no rows affected", func(t *testing.T) {
 		mock.ExpectExec(insertQuery).
-			WithArgs(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).WillReturnResult(sqlmock.NewResult(0, 0))
+			WithArgs(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
+			WillReturnResult(sqlmock.NewResult(0, 0))
 
 		err := repo.CreateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
@@ -208,7 +210,8 @@ func TestCreateCategory(t *testing.T) {
 	t.Run("should return error if rows affected fails", func(t *testing.T) {
 		dbErr := errors.New("rows affected error")
 		mock.ExpectExec(insertQuery).
-			WithArgs(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).WillReturnResult(sqlmock.NewErrorResult(dbErr))
+			WithArgs(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
+			WillReturnResult(sqlmock.NewErrorResult(dbErr))
 
 		err := repo.CreateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
@@ -239,7 +242,8 @@ func TestUpdateCategory(t *testing.T) {
 	t.Run("should return error if update query fails", func(t *testing.T) {
 		dbErr := errors.New("database error")
 		mock.ExpectExec(updateQuery).
-			WithArgs(testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.ID).WillReturnError(dbErr)
+			WithArgs(testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.ID).
+			WillReturnError(dbErr)
 
 		err := repo.UpdateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
@@ -249,7 +253,8 @@ func TestUpdateCategory(t *testing.T) {
 
 	t.Run("should return not found if no rows affected", func(t *testing.T) {
 		mock.ExpectExec(updateQuery).
-			WithArgs(testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.ID).WillReturnResult(sqlmock.NewResult(0, 0))
+			WithArgs(testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.ID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
 
 		err := repo.UpdateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
@@ -261,7 +266,8 @@ func TestUpdateCategory(t *testing.T) {
 	t.Run("should return error if rows affected fails", func(t *testing.T) {
 		dbErr := errors.New("rows affected error")
 		mock.ExpectExec(updateQuery).
-			WithArgs(testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.ID).WillReturnResult(sqlmock.NewErrorResult(dbErr))
+			WithArgs(testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.ID).
+			WillReturnResult(sqlmock.NewErrorResult(dbErr))
 
 		err := repo.UpdateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
@@ -281,7 +287,9 @@ func TestDeleteCategory(t *testing.T) {
 	deleteQuery := regexp.QuoteMeta(`DELETE FROM categories WHERE id = $1`)
 
 	t.Run("should delete valid category", func(t *testing.T) {
-		mock.ExpectExec(deleteQuery).WithArgs(testCategoryOne.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec(deleteQuery).
+			WithArgs(testCategoryOne.ID).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		err := repo.DeleteCategory(ctx, testCategoryOne.ID)
 		assert.NoError(t, err)
@@ -298,7 +306,9 @@ func TestDeleteCategory(t *testing.T) {
 	})
 
 	t.Run("should return not found if no rows affected", func(t *testing.T) {
-		mock.ExpectExec(deleteQuery).WithArgs(testCategoryOne.ID).WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectExec(deleteQuery).
+			WithArgs(testCategoryOne.ID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
 
 		err := repo.DeleteCategory(ctx, testCategoryOne.ID)
 		assert.Error(t, err)

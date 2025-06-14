@@ -92,6 +92,11 @@ func (r *ProductRepo) ListProducts(
 		}
 		products = append(products, &product)
 	}
+
+	if len(products) == 0 {
+		return []*Product{}, nil
+	}
+
 	return products, nil
 }
 
@@ -128,7 +133,7 @@ func (r *ProductRepo) DeleteProduct(ctx context.Context, id uuid.UUID) error {
 	const query = `DELETE FROM products WHERE id = $1`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("deletedProduct: delete query failed: %w", err)
+		return fmt.Errorf("deleteProduct: delete query failed: %w", err)
 	}
-	return checkRowsAffected(result, "deletedProduct")
+	return checkRowsAffected(result, "deleteProduct")
 }
