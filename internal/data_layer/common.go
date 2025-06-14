@@ -11,9 +11,7 @@ const (
 	minLimit = 1
 )
 
-var (
-	ErrNotFound = errors.New("not found")
-)
+var ErrNotFound = errors.New("not found")
 
 func checkLimit(limit int) int {
 	if limit < minLimit {
