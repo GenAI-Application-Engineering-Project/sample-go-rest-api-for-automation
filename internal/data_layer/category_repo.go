@@ -85,6 +85,11 @@ func (r *CategoryRepo) ListCategories(
 		}
 		categories = append(categories, &category)
 	}
+
+	if len(categories) == 0 {
+		return []*Category{}, nil
+	}
+
 	return categories, nil
 }
 
