@@ -95,7 +95,7 @@ func (r *CategoryRepo) ListCategories(
 
 // CreateCategory inserts a new category into the database
 func (r *CategoryRepo) CreateCategory(ctx context.Context, category *Category) error {
-	const query = `INSERT INTO categories(id, name, description) VALUES(:id, :name, :description)`
+	const query = `INSERT INTO categories(id, name, description, created_at) VALUES(:id, :name, :description, :created_at)`
 	result, err := r.db.NamedExecContext(ctx, query, category)
 	if err != nil {
 		return fmt.Errorf("createCategory: insert query failed: %w", err)
@@ -110,7 +110,7 @@ func (r *CategoryRepo) UpdateCategory(ctx context.Context, category *Category) e
 	if err != nil {
 		return fmt.Errorf("updateCategory: update query failed: %w", err)
 	}
-	return checkRowsAffected(result, "UpdateCategory")
+	return checkRowsAffected(result, "updateCategory")
 }
 
 // DeleteCategory removes a category by its ID
