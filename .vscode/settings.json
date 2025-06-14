@@ -1,14 +1,21 @@
 {
   "cSpell.words": [
+    "apiserver",
+    "applogger",
+    "datalayer",
     "gofmt",
     "gofumpt",
     "goimports",
     "Golangci",
     "govet",
+    "jmoiron",
     "projectname",
     "ryanluker",
+    "sqlx",
     "staticcheck",
-    "yourusername"
+    "stretchr",
+    "yourusername",
+    "zerolog"
   ],
   "yaml.schemas": {
     "": ["**/.golangci.yml"]

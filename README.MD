@@ -43,3 +43,9 @@ Clone Repo or Create Project Locally and setup the following
 4. Gitignore
 5. Makefile
 6. Create main.go file
+
+Task 1: Implement the Data Layer
+1. Create Category Repository Interface
+2. Create Product Repository Interface
+3. Implement Category Interface
+4. Implement Product Repository Interface
