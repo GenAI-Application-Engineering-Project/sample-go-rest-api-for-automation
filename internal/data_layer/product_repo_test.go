@@ -1,7 +1,6 @@
 package datalayer
 
 import (
-	"context"
 	"errors"
 	"regexp"
 	"testing"
@@ -40,7 +39,7 @@ func TestGetProductByID(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewProductRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(
 		`SELECT id, name, description, image_url, category_id, price, quantity, created_at
@@ -88,7 +87,7 @@ func TestListProducts(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewProductRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(`
 			SELECT id, name, description, image_url, category_id, price, quantity, created_at
@@ -190,7 +189,7 @@ func TestCreateProduct(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewProductRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	insertQuery := regexp.QuoteMeta(
 		`INSERT INTO products(id, name, description, image_url, category_id, price, quantity, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -247,7 +246,7 @@ func TestUpdateProduct(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewProductRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	updateQuery := regexp.QuoteMeta(
 		`UPDATE products SET name=?, description=?, image_url=?,category_id=?, price=?, quantity=?, created_at=? WHERE id=?`,
@@ -305,7 +304,7 @@ func TestDeleteProduct(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewProductRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	deleteQuery := regexp.QuoteMeta(`DELETE FROM products WHERE id = $1`)
 

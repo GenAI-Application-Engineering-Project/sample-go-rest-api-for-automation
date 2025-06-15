@@ -1,8 +1,69 @@
+run:
+  # prevent golangci-lint from deducting the go version to lint for through go.mod,
+  # which causes it to fallback to go1.17 semantics.
+  #
+  # TODO(thaJeztah): update "usetesting" settings to enable go1.24 features once our minimum version is go1.24
+  go: "1.24.4"
+
+  timeout: 5m
+
+issues:
+  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofumpt       # Detects whether code was gofumpt-ed.
+    - goimports
+
+  exclusions:
+    generated: strict
+
 linters:
   enable:
-    - gofmt
-    - goimports
-    - gofumpt
+    - asasalint                 # Detects "[]any" used as argument for variadic "func(...any)".
+    - bodyclose
+    - copyloopvar               # Detects places where loop variables are copied.
+    # - depguard
+    - dogsled                   # Detects assignments with too many blank identifiers.
+    - dupword                   # Detects duplicate words.
+    - durationcheck             # Detect cases where two time.Duration values are being multiplied in possibly erroneous ways.
+    - errcheck
+    - errchkjson                # Detects unsupported types passed to json encoding functions and reports if checks for the returned error can be omitted.
+    - exhaustive                # Detects missing options in enum switch statements.
+    - exptostd                  # Detects functions from golang.org/x/exp/ that can be replaced by std functions.
+    - fatcontext                # Detects nested contexts in loops and function literals.
+    - forbidigo
+    - gocheckcompilerdirectives # Detects invalid go compiler directive comments (//go:).
+    - gocritic                  # Metalinter; detects bugs, performance, and styling issues.
+    - gocyclo
+    - gosec                     # Detects security problems.
     - govet
+    - iface                     # Detects incorrect use of interfaces. Currently only used for "identical" interfaces in the same package.
+    - importas                  # Enforces consistent import aliases.
+    - ineffassign
+    - makezero                  # Finds slice declarations with non-zero initial length.
+    - mirror                    # Detects wrong mirror patterns of bytes/strings usage.
+    - misspell                  # Detects commonly misspelled English words in comments.
+    - nakedret                  # Detects uses of naked returns.
+    - nilnesserr                # Detects returning nil errors. It combines the features of nilness and nilerr,
+    - nosprintfhostport         # Detects misuse of Sprintf to construct a host with port in a URL.
+    - nolintlint                # Detects ill-formed or insufficient nolint directives.
+    - perfsprint                # Detects fmt.Sprintf uses that can be replaced with a faster alternative.
+    - prealloc                  # Detects slice declarations that could potentially be pre-allocated.
+    - predeclared               # Detects code that shadows one of Go's predeclared identifiers
+    - reassign                  # Detects reassigning a top-level variable in another package.
+    - revive                    # Metalinter; drop-in replacement for golint.
+    - spancheck                 # Detects mistakes with OpenTelemetry/Census spans.
     - staticcheck
-    - revive
+    - thelper                   # Detects test helpers without t.Helper().
+    - tparallel                 # Detects inappropriate usage of t.Parallel().
+    - unconvert                 # Detects unnecessary type conversions.
+    - unparam
+    - unused
+    - usestdlibvars             # Detects the possibility to use variables/constants from the Go standard library.
+    - usetesting                # Reports uses of functions with replacement inside the testing package.
+    - wastedassign              # Detects wasted assignment statements.

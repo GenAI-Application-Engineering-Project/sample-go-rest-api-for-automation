@@ -49,3 +49,8 @@ Task 1: Implement the Data Layer
 2. Create Product Repository Interface
 3. Implement Category Interface
 4. Implement Product Repository Interface
+
+Task 2: Implement the Handlers
+1. The Category Handler
+2. Implement App Logger
+3. The Product Handler

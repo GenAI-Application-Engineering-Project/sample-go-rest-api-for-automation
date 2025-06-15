@@ -1,7 +1,6 @@
 package datalayer
 
 import (
-	"context"
 	"errors"
 	"regexp"
 	"testing"
@@ -33,7 +32,7 @@ func TestGetCategoryByID(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewCategoryRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(`SELECT id, name, description FROM categories WHERE id = $1`)
 	t.Run("should return category", func(t *testing.T) {
@@ -77,7 +76,7 @@ func TestListCategories(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewCategoryRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(`
 			SELECT id, name, description, created_at
@@ -168,7 +167,7 @@ func TestCreateCategory(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewCategoryRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	insertQuery := regexp.QuoteMeta(
 		`INSERT INTO categories(id, name, description, created_at) VALUES(?, ?, ?, ?)`,
@@ -226,7 +225,7 @@ func TestUpdateCategory(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewCategoryRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	updateQuery := regexp.QuoteMeta(`UPDATE categories SET name=?, description=? WHERE id=?`)
 
@@ -282,7 +281,7 @@ func TestDeleteCategory(t *testing.T) {
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
 	repo := NewCategoryRepo(db)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	deleteQuery := regexp.QuoteMeta(`DELETE FROM categories WHERE id = $1`)
 
