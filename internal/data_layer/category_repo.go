@@ -12,10 +12,10 @@ import (
 )
 
 type Category struct {
-	ID          uuid.UUID `db:"id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	CreatedAt   time.Time `db:"created_at"`
+	ID          uuid.UUID `json:"id"          db:"id"`
+	Name        string    `json:"name"        db:"name"`
+	Description string    `json:"description" db:"description"`
+	CreatedAt   time.Time `json:"createdAt"   db:"created_at"`
 }
 
 type CategoryRepo struct {

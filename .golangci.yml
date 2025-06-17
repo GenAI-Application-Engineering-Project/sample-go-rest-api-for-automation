@@ -2,7 +2,7 @@ run:
   # prevent golangci-lint from deducting the go version to lint for through go.mod,
   # which causes it to fallback to go1.17 semantics.
   #
-  # TODO(thaJeztah): update "usetesting" settings to enable go1.24 features once our minimum version is go1.24
+  
   go: "1.24.4"
 
   timeout: 5m
@@ -67,3 +67,123 @@ linters:
     - usestdlibvars             # Detects the possibility to use variables/constants from the Go standard library.
     - usetesting                # Reports uses of functions with replacement inside the testing package.
     - wastedassign              # Detects wasted assignment statements.
+
+  settings:
+    forbidigo:
+      forbid:
+        - pkg: ^regexp$
+          pattern: ^regexp\.MustCompile
+          msg: Use internal/lazyregexp.New instead.
+
+    gocyclo:
+      min-complexity: 16
+
+    govet:
+      enable:
+        - shadow
+      settings:
+        shadow:
+          strict: true
+
+    lll:
+      line-length: 200
+
+    importas:
+      # Do not allow unaliased imports of aliased packages.
+      no-unaliased: true
+
+      alias:
+        # Enforce alias to prevent it accidentally being used instead of our
+        # own errdefs package (or vice-versa).
+        - pkg: github.com/containerd/errdefs
+          alias: cerrdefs
+        - pkg: github.com/opencontainers/image-spec/specs-go/v1
+          alias: ocispec
+          # Enforce that gotest.tools/v3/assert/cmp is always aliased as "is"
+        - pkg: gotest.tools/v3/assert/cmp
+          alias: is
+
+    nakedret:
+      # Disallow naked returns if func has more lines of code than this setting.
+      # Default: 30
+      max-func-lines: 0
+
+    staticcheck:
+      checks:
+        - all
+        - -QF1008 # Omit embedded fields from selector expression; https://staticcheck.dev/docs/checks/#QF1008
+
+    revive:
+      rules:
+        - name: empty-block       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#empty-block
+        - name: empty-lines       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#empty-lines
+        - name: import-shadowing  # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#import-shadowing
+        - name: line-length-limit # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#line-length-limit
+          arguments: [200]
+        - name: unused-receiver   # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#unused-receiver
+        - name: use-any           # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#use-any
+
+  exclusions:
+    # We prefer to use an "linters.exclusions.rules" so that new "default" exclusions are not
+    # automatically inherited. We can decide whether or not to follow upstream
+    # defaults when updating golang-ci-lint versions.
+    # Unfortunately, this means we have to copy the whole exclusion pattern, as
+    # (unlike the "include" option), the "exclude" option does not take exclusion
+    # ID's.
+    #
+    # These exclusion patterns are copied from the default excludes at:
+    # https://github.com/golangci/golangci-lint/blob/v1.61.0/pkg/config/issues.go#L11-L104
+    #
+    # The default list of exclusions can be found at:
+    # https://golangci-lint.run/usage/false-positives/#default-exclusions
+    generated: strict
+
+    rules:
+        # EXC0003
+      - text: "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
+        linters:
+          - revive
+
+        # EXC0007
+      - text: "Subprocess launch(ed with variable|ing should be audited)"
+        linters:
+          - gosec
+
+        # EXC0009
+      - text: "(Expect directory permissions to be 0750 or less|Expect file permissions to be 0600 or less)"
+        linters:
+          - gosec
+
+        # EXC0010
+      - text: "Potential file inclusion via variable"
+        linters:
+          - gosec
+
+      - text: "package-comments: should have a package comment"
+        linters:
+          - revive
+
+        # Exclude some linters from running on tests files.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+
+      - text: "ST1000: at least one file in a package should have a package comment"
+        linters:
+          - staticcheck
+
+        # Allow "err" and "ok" vars to shadow existing declarations, otherwise we get too many false positives.
+      - text: '^shadow: declaration of "(err|ok)" shadows declaration'
+        linters:
+          - govet
+
+      # Ignore for cli/command/formatter/tabwriter, which is forked from go stdlib, so we want to align with it.
+      - text: '^(ST1020|ST1022): comment on exported'
+        path: "cli/command/formatter/tabwriter"
+        linters:
+          - staticcheck
+
+    # Log a warning if an exclusion rule is unused.
+    # Default: false
+    warn-unused: true

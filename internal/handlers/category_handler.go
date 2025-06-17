@@ -13,28 +13,35 @@ import (
 
 type CategoryHandler struct {
 	repo       datalayer.CategoryRepoInterface
-	applogger  applogger.LoggerInterface
+	appLogger  applogger.LoggerInterface
 	ctxTimeout time.Duration
 }
 
 func NewCategoryHandler(
 	repo datalayer.CategoryRepoInterface,
-	applogger applogger.LoggerInterface,
+	appLogger applogger.LoggerInterface,
 	ctxTimeout time.Duration,
 ) *CategoryHandler {
 	return &CategoryHandler{
 		repo:       repo,
-		applogger:  applogger,
+		appLogger:  appLogger,
 		ctxTimeout: ctxTimeout,
 	}
 }
 
 func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	// Parse id param
-	id, err := parseUUIDParam(r, "id")
+	id, err := ParseUUIDParam(r, "id")
 	if err != nil {
-		h.applogger.LogError(err, "getCategory: error parsing `id` from uuid param")
-		http.Error(w, StatusBadRequestMessage, http.StatusBadRequest)
+		h.appLogger.LogError(err, "getCategory: error parsing `id` from uuid param")
+		WriteErrorResponse(
+			w,
+			http.StatusBadRequest,
+			ErrCodeInvalidFieldFormat,
+			ErrMessageInvalidFieldFormat,
+			nil,
+			h.appLogger,
+		)
 		return
 	}
 
@@ -45,16 +52,31 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	category, err := h.repo.GetCategoryByID(ctx, id)
 	if err != nil {
 		msg := fmt.Sprintf("getCategory: failed to fetch category from repo: id=`%s`", id)
-		h.applogger.LogError(err, msg)
+		h.appLogger.LogError(err, msg)
 
 		if errors.Is(err, datalayer.ErrNotFound) {
-			http.Error(w, StatusBadRequestMessage, http.StatusBadRequest)
+			WriteErrorResponse(
+				w,
+				http.StatusBadRequest,
+				ErrCodeResourceNotFound,
+				ErrMessageResourceNotFound,
+				nil,
+				h.appLogger,
+			)
 		} else {
-			http.Error(w, StatusInternalServerErrorMessage, http.StatusInternalServerError)
+			WriteErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalServerError, ErrMessageInternalServerError, nil, h.appLogger)
 		}
 		return
 	}
 
 	// Write http response
-	writeHTTPResponse(w, category, h.applogger)
+	WriteSuccessResponse(
+		w,
+		http.StatusOK,
+		"Category fetched successfully",
+		category,
+		nil,
+		nil,
+		h.appLogger,
+	)
 }

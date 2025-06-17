@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
-	"product-service/internal/mocks"
 	"strings"
 	"testing"
 	"time"
+
+	"product-service/internal/mocks"
 
 	datalayer "product-service/internal/data_layer"
 
@@ -44,10 +46,106 @@ func TestGetCategory(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rw.Code)
 		expectedResponse := `{
-			"ID": "f2aa335f-6f91-4d4d-8057-53b0009bc376",
-			"Name": "Test Category A",
-			"Description": "Test category a description",
-			"CreatedAt": "2023-01-01T00:00:00Z"
+			"data": {
+				"id": "f2aa335f-6f91-4d4d-8057-53b0009bc376",
+				"name": "Test Category A",
+				"description": "Test category a description",
+				"createdAt": "2023-01-01T00:00:00Z"
+			},
+			"message": "Category fetched successfully",
+			"status": "success"
+		}`
+		assert.JSONEq(t, expectedResponse, rw.Body.String())
+
+		mockRepo.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("should respond with bad request if id param is not valid", func(t *testing.T) {
+		mockRepo := new(mocks.MockCategoryRepo)
+		mockLogger := new(mocks.MockLogger)
+		const errMsg = "getCategory: error parsing `id` from uuid param"
+		mockLogger.On("LogError", mock.Anything, errMsg).Return()
+
+		reqURL := "/categories/1234" //  + categoryID.String()
+		req := httptest.NewRequest(http.MethodGet, reqURL, strings.NewReader(""))
+		rw := httptest.NewRecorder()
+
+		h := NewCategoryHandler(mockRepo, mockLogger, ctxTimeOut)
+		router := mux.NewRouter()
+		router.HandleFunc("/categories/{id}", h.GetCategory).Methods(http.MethodGet)
+		router.ServeHTTP(rw, req)
+
+		assert.Equal(t, http.StatusBadRequest, rw.Code)
+		expectedResponse := `{
+			"status":"error",
+			"error": {
+				"code": 1002,
+				"message": "Invalid field format"
+			}
+		}`
+		assert.JSONEq(t, expectedResponse, rw.Body.String())
+
+		mockRepo.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("should respond with bad request if category is not found", func(t *testing.T) {
+		mockRepo := new(mocks.MockCategoryRepo)
+		mockRepo.On("GetCategoryByID", mock.Anything, categoryID).Return(nil, datalayer.ErrNotFound)
+
+		mockLogger := new(mocks.MockLogger)
+		errMsg := "getCategory: failed to fetch category from repo: id=`f2aa335f-6f91-4d4d-8057-53b0009bc376`"
+		mockLogger.On("LogError", datalayer.ErrNotFound, errMsg)
+
+		reqURL := "/categories/" + categoryID.String()
+		req := httptest.NewRequest(http.MethodGet, reqURL, strings.NewReader(""))
+		rw := httptest.NewRecorder()
+
+		h := NewCategoryHandler(mockRepo, mockLogger, ctxTimeOut)
+		router := mux.NewRouter()
+		router.HandleFunc("/categories/{id}", h.GetCategory).Methods(http.MethodGet)
+		router.ServeHTTP(rw, req)
+
+		assert.Equal(t, http.StatusBadRequest, rw.Code)
+		expectedResponse := `{
+			"status":"error",
+			"error": {
+				"code": 1300,
+				"message": "Resource not found"
+			}
+		}`
+		assert.JSONEq(t, expectedResponse, rw.Body.String())
+
+		mockRepo.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("should respond with internal server error if repo returns error", func(t *testing.T) {
+		err := errors.New("db query error")
+		mockRepo := new(mocks.MockCategoryRepo)
+		mockRepo.On("GetCategoryByID", mock.Anything, categoryID).Return(nil, err)
+
+		mockLogger := new(mocks.MockLogger)
+		errMsg := "getCategory: failed to fetch category from repo: id=`f2aa335f-6f91-4d4d-8057-53b0009bc376`"
+		mockLogger.On("LogError", err, errMsg)
+
+		reqURL := "/categories/" + categoryID.String()
+		req := httptest.NewRequest(http.MethodGet, reqURL, strings.NewReader(""))
+		rw := httptest.NewRecorder()
+
+		h := NewCategoryHandler(mockRepo, mockLogger, ctxTimeOut)
+		router := mux.NewRouter()
+		router.HandleFunc("/categories/{id}", h.GetCategory).Methods(http.MethodGet)
+		router.ServeHTTP(rw, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rw.Code)
+		expectedResponse := `{
+			"status":"error",
+			"error": {
+				"code": 1600,
+				"message": "Internal server error"
+			}
 		}`
 		assert.JSONEq(t, expectedResponse, rw.Body.String())
 
