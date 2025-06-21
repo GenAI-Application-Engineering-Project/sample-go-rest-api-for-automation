@@ -6,11 +6,6 @@ import (
 	"fmt"
 )
 
-// const (
-// 	maxLimit = 1000
-// 	minLimit = 10
-// )
-
 var ErrNotFound = errors.New("resource not found")
 
 func checkLimit(limit int, minLimit, maxLimit int) int {

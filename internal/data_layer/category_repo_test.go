@@ -71,12 +71,14 @@ func TestGetCategoryByID(t *testing.T) {
 
 func TestListCategories(t *testing.T) {
 	var createdAfter time.Time
+	const minLimit = 1
+	const maxLimit = 2
 
 	mockDB, mock, _ := sqlmock.New()
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewCategoryRepo(db, testMinLimit, testMaxLimit)
+	repo := NewCategoryRepo(db, minLimit, maxLimit)
 	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(`
@@ -93,13 +95,15 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
 		mock.ExpectQuery(selectQuery).
-			WithArgs(createdAfter, testMaxLimit+1).
+			WithArgs(createdAfter, maxLimit+1).
 			WillReturnRows(mockRows)
-		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
+		result := repo.ListCategories(ctx, createdAfter, maxLimit)
 
 		assert.NoError(t, result.Error)
 		assert.NotNil(t, result.Categories)
 		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, result.Categories)
+		assert.False(t, result.HasMore)
+		assert.Equal(t, time.Time{}, result.NextCursor)
 	})
 
 	t.Run("should use minimum limit if limit is less than minimum limit", func(t *testing.T) {
@@ -107,12 +111,14 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 11).WillReturnRows(mockRows)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, maxLimit).WillReturnRows(mockRows)
 		result := repo.ListCategories(ctx, createdAfter, -1)
 
 		assert.NoError(t, result.Error)
 		assert.NotNil(t, result.Categories)
-		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, result.Categories)
+		assert.Equal(t, []*Category{&testCategoryOne}, result.Categories)
+		assert.True(t, result.HasMore)
+		assert.Equal(t, testCategoryTwo.CreatedAt, result.NextCursor)
 	})
 
 	t.Run("should use maximum limit if limit is greater than maximum limit", func(t *testing.T) {
@@ -120,8 +126,8 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 1001).WillReturnRows(mockRows)
-		result := repo.ListCategories(ctx, createdAfter, 100009)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, maxLimit+1).WillReturnRows(mockRows)
+		result := repo.ListCategories(ctx, createdAfter, 1001)
 
 		assert.NoError(t, result.Error)
 		assert.NotNil(t, result.Categories)
@@ -131,9 +137,9 @@ func TestListCategories(t *testing.T) {
 	t.Run("should return empty list if categories length is zero", func(t *testing.T) {
 		mockRows := sqlmock.NewRows([]string{"id", "name", "description", "created_at"})
 		mock.ExpectQuery(selectQuery).
-			WithArgs(createdAfter, testMaxLimit+1).
+			WithArgs(createdAfter, maxLimit+1).
 			WillReturnRows(mockRows)
-		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
+		result := repo.ListCategories(ctx, createdAfter, maxLimit)
 
 		assert.NoError(t, result.Error)
 		assert.NotNil(t, result.Categories)
@@ -142,8 +148,8 @@ func TestListCategories(t *testing.T) {
 
 	t.Run("should return error if select query fails", func(t *testing.T) {
 		dbErr := errors.New("query error")
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, testMaxLimit+1).WillReturnError(dbErr)
-		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, maxLimit+1).WillReturnError(dbErr)
+		result := repo.ListCategories(ctx, createdAfter, maxLimit)
 
 		assert.Nil(t, result.Categories)
 		assert.Error(t, result.Error)
@@ -157,9 +163,9 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
 		mock.ExpectQuery(selectQuery).
-			WithArgs(createdAfter, testMaxLimit+1).
+			WithArgs(createdAfter, maxLimit+1).
 			WillReturnRows(mockRows)
-		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
+		result := repo.ListCategories(ctx, createdAfter, maxLimit)
 
 		assert.Nil(t, result.Categories)
 		assert.Error(t, result.Error)
