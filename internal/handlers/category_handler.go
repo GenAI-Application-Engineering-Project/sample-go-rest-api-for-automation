@@ -153,13 +153,13 @@ func (h *CategoryHandler) ListCategories(w http.ResponseWriter, r *http.Request)
 
 	pagination := Pagination{
 		HasMore:    result.HasMore,
-		NextCursor: result.NextCursor,
+		NextCursor: EncodeTimeToCursor(result.NextCursor),
 	}
 
 	WriteSuccessResponse(
 		w,
 		http.StatusOK,
-		"Successfully fetched categories",
+		"Categories fetched successfully",
 		result.Categories,
 		&pagination,
 		nil,

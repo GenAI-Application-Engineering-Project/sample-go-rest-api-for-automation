@@ -34,12 +34,12 @@ const (
 )
 
 type Pagination struct {
-	Page       int       `json:"page,omitempty"`
-	PerPage    int       `json:"per_page,omitempty"`
-	Total      int       `json:"total,omitempty"`
-	TotalPages int       `json:"total_pages,omitempty"`
-	HasMore    bool      `json:"has_more,omitempty"`
-	NextCursor time.Time `json:"next_cursor,omitempty"`
+	Page       int    `json:"page,omitempty"`
+	PerPage    int    `json:"per_page,omitempty"`
+	Total      int    `json:"total,omitempty"`
+	TotalPages int    `json:"total_pages,omitempty"`
+	HasMore    bool   `json:"has_more,omitempty"`
+	NextCursor string `json:"next_cursor,omitempty"`
 }
 
 type Error struct {

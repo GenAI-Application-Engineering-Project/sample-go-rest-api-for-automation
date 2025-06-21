@@ -3,6 +3,7 @@
     "apiserver",
     "applogger",
     "datalayer",
+    "Doweff",
     "godoc",
     "gofmt",
     "gofumpt",
