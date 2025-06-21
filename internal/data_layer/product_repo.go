@@ -23,7 +23,9 @@ type Product struct {
 }
 
 type ProductRepo struct {
-	db *sqlx.DB
+	db       *sqlx.DB
+	minLimit int
+	maxLimit int
 }
 
 type ProductRepoInterface interface {
@@ -35,8 +37,12 @@ type ProductRepoInterface interface {
 }
 
 // NewProductRepository creates a new repository instance
-func NewProductRepo(db *sqlx.DB) ProductRepoInterface {
-	return &ProductRepo{db: db}
+func NewProductRepo(db *sqlx.DB, minLimit, maxLimit int) ProductRepoInterface {
+	return &ProductRepo{
+		db:       db,
+		minLimit: minLimit,
+		maxLimit: maxLimit,
+	}
 }
 
 // GetProductByID fetches a product by its ID
@@ -64,7 +70,7 @@ func (r *ProductRepo) ListProducts(
 	createdAfter time.Time, // pagination token
 	limit int,
 ) ([]*Product, error) {
-	limit = checkLimit(limit)
+	limit = checkLimit(limit, r.minLimit, r.maxLimit)
 	args := map[string]any{
 		"created_at": createdAfter,
 		"limit":      limit,

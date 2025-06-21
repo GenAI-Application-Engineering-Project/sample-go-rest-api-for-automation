@@ -17,6 +17,7 @@ import (
 )
 
 func TestWriteResponse(t *testing.T) {
+	const op = "TestHandler.TestMethod"
 	t.Run("should write success response", func(t *testing.T) {
 		data := datalayer.Category{
 			ID:          uuid.MustParse("f2aa335f-6f91-4d4d-8057-53b0009bc376"),
@@ -26,7 +27,7 @@ func TestWriteResponse(t *testing.T) {
 		}
 
 		rw := httptest.NewRecorder()
-		WriteSuccessResponse(rw, 200, "success", data, nil, nil, nil)
+		WriteSuccessResponse(rw, 200, "success", data, nil, nil, op, nil)
 
 		expectedResponse := `{
 			"data": {
@@ -51,10 +52,10 @@ func TestWriteResponse(t *testing.T) {
 
 		mockLogger := new(mocks.MockLogger)
 		const errMsg = "error encoding json response"
-		mockLogger.On("LogError", mock.Anything, errMsg).Return()
+		mockLogger.On("LogError", op, mock.Anything, errMsg).Return()
 
 		rw := httptest.NewRecorder()
-		WriteSuccessResponse(rw, 200, "success", data, nil, nil, mockLogger)
+		WriteSuccessResponse(rw, 200, "success", data, nil, nil, op, mockLogger)
 
 		expectedResponse := `{
 			"status":"error",
@@ -70,18 +71,88 @@ func TestWriteResponse(t *testing.T) {
 
 	t.Run("should respond with internal server error if encoding fails", func(t *testing.T) {
 		data := map[string]string{"message": "hello"}
+		dataBytes := []byte{
+			0x7b,
+			0x22,
+			0x73,
+			0x74,
+			0x61,
+			0x74,
+			0x75,
+			0x73,
+			0x22,
+			0x3a,
+			0x22,
+			0x73,
+			0x75,
+			0x63,
+			0x63,
+			0x65,
+			0x73,
+			0x73,
+			0x22,
+			0x2c,
+			0x22,
+			0x64,
+			0x61,
+			0x74,
+			0x61,
+			0x22,
+			0x3a,
+			0x7b,
+			0x22,
+			0x6d,
+			0x65,
+			0x73,
+			0x73,
+			0x61,
+			0x67,
+			0x65,
+			0x22,
+			0x3a,
+			0x22,
+			0x68,
+			0x65,
+			0x6c,
+			0x6c,
+			0x6f,
+			0x22,
+			0x7d,
+			0x2c,
+			0x22,
+			0x6d,
+			0x65,
+			0x73,
+			0x73,
+			0x61,
+			0x67,
+			0x65,
+			0x22,
+			0x3a,
+			0x22,
+			0x73,
+			0x75,
+			0x63,
+			0x63,
+			0x65,
+			0x73,
+			0x73,
+			0x22,
+			0x7d,
+			0xa,
+		}
 		err := errors.New("writer error")
 
 		mockLogger := new(mocks.MockLogger)
 		const errMsg = "error writing response to client"
-		mockLogger.On("LogError", err, errMsg).Return().Once()
+		mockLogger.On("LogError", op, err, errMsg).Return().Once()
 
 		mockResponseWriter := new(mocks.MockHTTPResponseWriter)
-		mockResponseWriter.On("Write", mock.Anything).Return(0, err)
+		mockResponseWriter.On("Write", dataBytes).Return(0, err)
 		mockResponseWriter.On("Header").Return(http.Header{})
 		mockResponseWriter.On("WriteHeader", 200).Return()
 
-		WriteSuccessResponse(mockResponseWriter, 200, "success", data, nil, nil, mockLogger)
+		WriteSuccessResponse(mockResponseWriter, 200, "success", data, nil, nil, op, mockLogger)
 
 		mockResponseWriter.AssertExpectations(t)
 		mockLogger.AssertExpectations(t)

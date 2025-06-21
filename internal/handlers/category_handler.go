@@ -29,17 +29,32 @@ func NewCategoryHandler(
 	}
 }
 
+// GetCategory  handles HTTP GET request to fetch a category.
+//
+// @Summary     Get a category by ID
+// @Description Retrieves a category by its ID from the database
+// @Tags        Categories
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Category UUID"
+// @Success     200 {object} CategoryResponse
+// @Failure     400 {object} ErrorResponse
+// @Failure     500 {object} ErrorResponse
+// @Router      /categories/{id} [get]
 func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
+	const op = "CategoryHandler.GetCategory"
+
 	// Parse id param
 	id, err := ParseUUIDParam(r, "id")
 	if err != nil {
-		h.appLogger.LogError(err, "getCategory: error parsing `id` from uuid param")
+		h.appLogger.LogError(op, err, "error parsing `id` from uuid param")
 		WriteErrorResponse(
 			w,
 			http.StatusBadRequest,
 			ErrCodeInvalidFieldFormat,
 			ErrMessageInvalidFieldFormat,
 			nil,
+			op,
 			h.appLogger,
 		)
 		return
@@ -51,8 +66,8 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 
 	category, err := h.repo.GetCategoryByID(ctx, id)
 	if err != nil {
-		msg := fmt.Sprintf("getCategory: failed to fetch category from repo: id=`%s`", id)
-		h.appLogger.LogError(err, msg)
+		msg := fmt.Sprintf("failed to fetch category from repo: id=`%s`", id)
+		h.appLogger.LogError(op, err, msg)
 
 		if errors.Is(err, datalayer.ErrNotFound) {
 			WriteErrorResponse(
@@ -61,10 +76,11 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 				ErrCodeResourceNotFound,
 				ErrMessageResourceNotFound,
 				nil,
+				op,
 				h.appLogger,
 			)
 		} else {
-			WriteErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalServerError, ErrMessageInternalServerError, nil, h.appLogger)
+			WriteErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalServerError, ErrMessageInternalServerError, nil, op, h.appLogger)
 		}
 		return
 	}
@@ -77,6 +93,77 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 		category,
 		nil,
 		nil,
+		op,
+		h.appLogger,
+	)
+}
+
+// ListCategories handles HTTP GET requests to fetch a paginated list of categories.
+//
+// @Summary      List categories
+// @Description  Retrieves a paginated list of category resources from the database.
+// @Tags         Categories
+// @Accept       json
+// @Produce      json
+// @Param        cursor  query     string false "Pagination cursor (RFC3339 timestamp)"
+// @Param        limit   query     int    false "Max number of categories to return (e.g. 50)"
+// @Success      200     {object}  ListCategoriesResponse
+// @Failure      400     {object}  ErrorResponse "Invalid cursor or limit"
+// @Failure      500     {object}  ErrorResponse "Internal server error"
+// @Router       /categories [get]
+func (h *CategoryHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
+	const op = "CategoryHandler.ListCategories"
+
+	createdAfter, limit, isValid := ParseAndValidatePagination(r, op, h.appLogger)
+	if !isValid {
+		WriteErrorResponse(
+			w,
+			http.StatusBadRequest,
+			ErrCodeInvalidFieldFormat,
+			ErrMessageInvalidFieldFormat,
+			nil,
+			op,
+			h.appLogger,
+		)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), h.ctxTimeout)
+	defer cancel()
+
+	result := h.repo.ListCategories(ctx, createdAfter, limit)
+	if result.Error != nil {
+		errMsg := fmt.Sprintf(
+			"error fetching list of categories: createdAfter=`%s`, limit=`%d`",
+			createdAfter.Format(time.RFC3339),
+			limit,
+		)
+		h.appLogger.LogError(op, result.Error, errMsg)
+		WriteErrorResponse(
+			w,
+			http.StatusInternalServerError,
+			ErrCodeInternalServerError,
+			ErrMessageInternalServerError,
+			nil,
+			op,
+			h.appLogger,
+		)
+		return
+	}
+
+	pagination := Pagination{
+		HasMore:    result.HasMore,
+		NextCursor: result.NextCursor,
+	}
+
+	WriteSuccessResponse(
+		w,
+		http.StatusOK,
+		"Successfully fetched categories",
+		result.Categories,
+		&pagination,
+		nil,
+		op,
 		h.appLogger,
 	)
 }

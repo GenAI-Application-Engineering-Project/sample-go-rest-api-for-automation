@@ -29,12 +29,9 @@ func (m *MockCategoryRepo) ListCategories(
 	ctx context.Context,
 	createdAfter time.Time,
 	limit int,
-) ([]*datalayer.Category, error) {
+) datalayer.ListCategoryResult {
 	args := m.Called(ctx, createdAfter, limit)
-	if cats, ok := args.Get(0).([]*datalayer.Category); ok {
-		return cats, args.Error(1)
-	}
-	return nil, args.Error(1)
+	return args.Get(0).(datalayer.ListCategoryResult)
 }
 
 func (m *MockCategoryRepo) CreateCategory(ctx context.Context, category *datalayer.Category) error {

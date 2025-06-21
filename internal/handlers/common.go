@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	applogger "product-service/internal/app_logger"
 
@@ -18,6 +21,9 @@ const (
 	ErrCodeInvalidFieldFormat  = 1002
 	ErrCodeResourceNotFound    = 1300
 
+	LimitParam = "limit"
+	CursorParm = "cursor"
+
 	// Error code messages
 	ErrMessageInvalidFieldFormat  = "Invalid field format"
 	ErrMessageResourceNotFound    = "Resource not found"
@@ -28,10 +34,12 @@ const (
 )
 
 type Pagination struct {
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	Total      int `json:"total"`
-	TotalPages int `json:"total_pages"`
+	Page       int       `json:"page,omitempty"`
+	PerPage    int       `json:"per_page,omitempty"`
+	Total      int       `json:"total,omitempty"`
+	TotalPages int       `json:"total_pages,omitempty"`
+	HasMore    bool      `json:"has_more,omitempty"`
+	NextCursor time.Time `json:"next_cursor,omitempty"`
 }
 
 type Error struct {
@@ -57,6 +65,7 @@ func WriteResponse(
 	w http.ResponseWriter,
 	statusCode int,
 	details any,
+	op string,
 	logger applogger.LoggerInterface,
 ) {
 	// Encode response to buffer
@@ -64,13 +73,14 @@ func WriteResponse(
 	if details != nil {
 		err := json.NewEncoder(&buf).Encode(details)
 		if err != nil {
-			logger.LogError(err, "error encoding json response")
+			logger.LogError(op, err, "error encoding json response")
 			WriteErrorResponse(
 				w,
 				http.StatusInternalServerError,
 				ErrCodeInternalServerError,
 				ErrMessageInternalServerError,
 				nil,
+				op,
 				logger,
 			)
 			return
@@ -83,7 +93,7 @@ func WriteResponse(
 	// Write response body
 	if buf.Len() > 0 {
 		if _, err := buf.WriteTo(w); err != nil {
-			logger.LogError(err, "error writing response to client")
+			logger.LogError(op, err, "error writing response to client")
 		}
 	}
 }
@@ -94,6 +104,7 @@ func WriteErrorResponse(
 	code int,
 	message string,
 	details any,
+	op string,
 	logger applogger.LoggerInterface,
 ) {
 	resp := HTTPErrorResponse{
@@ -105,7 +116,7 @@ func WriteErrorResponse(
 		},
 	}
 
-	WriteResponse(w, statusCode, resp, logger)
+	WriteResponse(w, statusCode, resp, op, logger)
 }
 
 func WriteSuccessResponse(
@@ -115,6 +126,7 @@ func WriteSuccessResponse(
 	data any,
 	pagination *Pagination,
 	meta any,
+	op string,
 	logger applogger.LoggerInterface,
 ) {
 	resp := HTTPSuccessResponse{
@@ -125,7 +137,7 @@ func WriteSuccessResponse(
 		Message:    message,
 	}
 
-	WriteResponse(w, statusCode, resp, logger)
+	WriteResponse(w, statusCode, resp, op, logger)
 }
 
 func ParseUUIDParam(r *http.Request, param string) (uuid.UUID, error) {
@@ -145,4 +157,69 @@ func ParseUUIDParam(r *http.Request, param string) (uuid.UUID, error) {
 	}
 
 	return uuidVal, nil
+}
+
+// DecodeCursorToTime decodes a base64 URL-safe string back into a time.Time
+func DecodeCursorToTime(cursor string) (time.Time, error) {
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid cursor encoding: %s", cursor)
+	}
+
+	t, err := time.Parse(time.RFC3339Nano, string(decodedBytes))
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid cursor time format: %s", cursor)
+	}
+	return t, nil
+}
+
+// EncodeTimeToCursor encodes a time.Time into a base64 URL-safe string
+func EncodeTimeToCursor(t time.Time) string {
+	timeStr := t.UTC().Format(time.RFC3339Nano)
+	return base64.RawURLEncoding.EncodeToString([]byte(timeStr))
+}
+
+func ParseCursor(r *http.Request) (time.Time, error) {
+	cursorStr := r.URL.Query().Get(CursorParm)
+	if cursorStr == "" {
+		return time.Time{}, nil
+	}
+
+	createdAfter, err := DecodeCursorToTime(cursorStr)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return createdAfter, nil
+}
+
+func ParseLimit(r *http.Request) (int, error) {
+	limitStr := r.URL.Query().Get(LimitParam)
+	if limitStr == "" {
+		return 0, nil
+	}
+
+	val, err := strconv.ParseInt(limitStr, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+
+	return int(val), nil
+}
+
+func ParseAndValidatePagination(
+	r *http.Request,
+	op string,
+	logger applogger.LoggerInterface,
+) (time.Time, int, bool) {
+	cursor, err := ParseCursor(r)
+	if err != nil {
+		logger.LogError(op, err, "parse cursor error")
+		return time.Time{}, 0, false
+	}
+	limit, err := ParseLimit(r)
+	if err != nil {
+		logger.LogError(op, err, "parse limit error")
+		return time.Time{}, 0, false
+	}
+	return cursor, limit, true
 }

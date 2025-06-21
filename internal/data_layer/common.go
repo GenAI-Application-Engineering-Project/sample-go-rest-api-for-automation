@@ -6,14 +6,14 @@ import (
 	"fmt"
 )
 
-const (
-	maxLimit = 1000
-	minLimit = 1
-)
+// const (
+// 	maxLimit = 1000
+// 	minLimit = 10
+// )
 
-var ErrNotFound = errors.New("not found")
+var ErrNotFound = errors.New("resource not found")
 
-func checkLimit(limit int) int {
+func checkLimit(limit int, minLimit, maxLimit int) int {
 	if limit < minLimit {
 		limit = minLimit
 	} else if limit > maxLimit {

@@ -31,10 +31,12 @@ func TestGetCategoryByID(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewCategoryRepo(db)
+	repo := NewCategoryRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
-	selectQuery := regexp.QuoteMeta(`SELECT id, name, description FROM categories WHERE id = $1`)
+	selectQuery := regexp.QuoteMeta(
+		`SELECT id, name, description, createdAt FROM categories WHERE id = $1`,
+	)
 	t.Run("should return category", func(t *testing.T) {
 		mockRows := sqlmock.NewRows([]string{"id", "name", "description", "created_at"}).
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt)
@@ -62,41 +64,42 @@ func TestGetCategoryByID(t *testing.T) {
 		assert.Nil(t, category)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, ErrNotFound))
-		expectedErrMsg := "getCategoryByID: not found: id `f2aa335f-6f91-4d4d-8057-53b0009bc376`"
+		expectedErrMsg := "getCategoryByID: resource not found: id `f2aa335f-6f91-4d4d-8057-53b0009bc376`"
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
 }
 
 func TestListCategories(t *testing.T) {
 	var createdAfter time.Time
-	limit := 10
 
 	mockDB, mock, _ := sqlmock.New()
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewCategoryRepo(db)
+	repo := NewCategoryRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(`
-			SELECT id, name, description, created_at
-			FROM categories
-			WHERE created_at > ?
-			ORDER BY created_at ASC
-			LIMIT ?
-		`)
+		SELECT id, name, description, created_at
+		FROM categories
+		WHERE created_at >= ?
+		ORDER BY created_at ASC, id ASC
+		LIMIT ?
+	`)
 
 	t.Run("should return list of categories", func(t *testing.T) {
 		mockRows := sqlmock.NewRows([]string{"id", "name", "description", "created_at"}).
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, limit).WillReturnRows(mockRows)
-		categories, err := repo.ListCategories(ctx, createdAfter, limit)
+		mock.ExpectQuery(selectQuery).
+			WithArgs(createdAfter, testMaxLimit+1).
+			WillReturnRows(mockRows)
+		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, categories)
-		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, categories)
+		assert.NoError(t, result.Error)
+		assert.NotNil(t, result.Categories)
+		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, result.Categories)
 	})
 
 	t.Run("should use minimum limit if limit is less than minimum limit", func(t *testing.T) {
@@ -104,12 +107,12 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 1).WillReturnRows(mockRows)
-		categories, err := repo.ListCategories(ctx, createdAfter, -1)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 11).WillReturnRows(mockRows)
+		result := repo.ListCategories(ctx, createdAfter, -1)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, categories)
-		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, categories)
+		assert.NoError(t, result.Error)
+		assert.NotNil(t, result.Categories)
+		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, result.Categories)
 	})
 
 	t.Run("should use maximum limit if limit is greater than maximum limit", func(t *testing.T) {
@@ -117,33 +120,35 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 1000).WillReturnRows(mockRows)
-		categories, err := repo.ListCategories(ctx, createdAfter, 100009)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 1001).WillReturnRows(mockRows)
+		result := repo.ListCategories(ctx, createdAfter, 100009)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, categories)
-		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, categories)
+		assert.NoError(t, result.Error)
+		assert.NotNil(t, result.Categories)
+		assert.Equal(t, []*Category{&testCategoryOne, &testCategoryTwo}, result.Categories)
 	})
 
 	t.Run("should return empty list if categories length is zero", func(t *testing.T) {
 		mockRows := sqlmock.NewRows([]string{"id", "name", "description", "created_at"})
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, limit).WillReturnRows(mockRows)
-		categories, err := repo.ListCategories(ctx, createdAfter, limit)
+		mock.ExpectQuery(selectQuery).
+			WithArgs(createdAfter, testMaxLimit+1).
+			WillReturnRows(mockRows)
+		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, categories)
-		assert.Equal(t, []*Category{}, categories)
+		assert.NoError(t, result.Error)
+		assert.NotNil(t, result.Categories)
+		assert.Equal(t, []*Category{}, result.Categories)
 	})
 
 	t.Run("should return error if select query fails", func(t *testing.T) {
 		dbErr := errors.New("query error")
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, limit).WillReturnError(dbErr)
-		categories, err := repo.ListCategories(ctx, createdAfter, limit)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, testMaxLimit+1).WillReturnError(dbErr)
+		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
 
-		assert.Nil(t, categories)
-		assert.Error(t, err)
+		assert.Nil(t, result.Categories)
+		assert.Error(t, result.Error)
 		expectedErrMsg := "listCategories: select query failed: query error"
-		assert.Equal(t, expectedErrMsg, err.Error())
+		assert.Equal(t, expectedErrMsg, result.Error.Error())
 	})
 
 	t.Run("should return error if scan fails", func(t *testing.T) {
@@ -151,13 +156,15 @@ func TestListCategories(t *testing.T) {
 			AddRow(testCategoryOne.ID, testCategoryOne.Name, testCategoryOne.Description, testCategoryOne.CreatedAt).
 			AddRow(testCategoryTwo.ID, testCategoryTwo.Name, testCategoryTwo.Description, testCategoryTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, limit).WillReturnRows(mockRows)
-		categories, err := repo.ListCategories(ctx, createdAfter, limit)
+		mock.ExpectQuery(selectQuery).
+			WithArgs(createdAfter, testMaxLimit+1).
+			WillReturnRows(mockRows)
+		result := repo.ListCategories(ctx, createdAfter, testMaxLimit)
 
-		assert.Nil(t, categories)
-		assert.Error(t, err)
+		assert.Nil(t, result.Categories)
+		assert.Error(t, result.Error)
 		expectedErrMsg := "listCategories: scan failed: missing destination name createdAt in *datalayer.Category"
-		assert.Equal(t, expectedErrMsg, err.Error())
+		assert.Equal(t, expectedErrMsg, result.Error.Error())
 	})
 }
 
@@ -166,7 +173,7 @@ func TestCreateCategory(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewCategoryRepo(db)
+	repo := NewCategoryRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	insertQuery := regexp.QuoteMeta(
@@ -201,7 +208,7 @@ func TestCreateCategory(t *testing.T) {
 
 		err := repo.CreateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
-		expectedErrMsg := "createCategory: no rows affected: not found"
+		expectedErrMsg := "createCategory: no rows affected: resource not found"
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
@@ -224,7 +231,7 @@ func TestUpdateCategory(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewCategoryRepo(db)
+	repo := NewCategoryRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	updateQuery := regexp.QuoteMeta(`UPDATE categories SET name=?, description=? WHERE id=?`)
@@ -257,7 +264,7 @@ func TestUpdateCategory(t *testing.T) {
 
 		err := repo.UpdateCategory(ctx, &testCategoryOne)
 		assert.Error(t, err)
-		expectedErrMsg := "updateCategory: no rows affected: not found"
+		expectedErrMsg := "updateCategory: no rows affected: resource not found"
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
@@ -280,7 +287,7 @@ func TestDeleteCategory(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewCategoryRepo(db)
+	repo := NewCategoryRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	deleteQuery := regexp.QuoteMeta(`DELETE FROM categories WHERE id = $1`)
@@ -311,7 +318,7 @@ func TestDeleteCategory(t *testing.T) {
 
 		err := repo.DeleteCategory(ctx, testCategoryOne.ID)
 		assert.Error(t, err)
-		expectedErrMsg := "deleteCategory: no rows affected: not found"
+		expectedErrMsg := "deleteCategory: no rows affected: resource not found"
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})

@@ -1,5 +1,5 @@
 package applogger
 
 type LoggerInterface interface {
-	LogError(err error, msg string)
+	LogError(op string, err error, msg string)
 }

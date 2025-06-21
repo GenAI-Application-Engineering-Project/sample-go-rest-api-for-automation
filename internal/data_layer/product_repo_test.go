@@ -12,6 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testMinLimit = 10
+	testMaxLimit = 1000
+)
+
 var testProductOne = Product{
 	ID:          uuid.MustParse("f2aa335f-6f91-4d4d-8057-53b0009bc376"),
 	Name:        "Test Product A",
@@ -38,7 +43,7 @@ func TestGetProductByID(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewProductRepo(db)
+	repo := NewProductRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(
@@ -73,7 +78,7 @@ func TestGetProductByID(t *testing.T) {
 		assert.Nil(t, product)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, ErrNotFound))
-		expectedErrMsg := "getProductByID: not found: id `f2aa335f-6f91-4d4d-8057-53b0009bc376`"
+		expectedErrMsg := "getProductByID: resource not found: id `f2aa335f-6f91-4d4d-8057-53b0009bc376`"
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
 }
@@ -86,7 +91,7 @@ func TestListProducts(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewProductRepo(db)
+	repo := NewProductRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	selectQuery := regexp.QuoteMeta(`
@@ -115,7 +120,7 @@ func TestListProducts(t *testing.T) {
 			AddRow(testProductOne.ID, testProductOne.Name, testProductOne.Description, testProductOne.ImageURL, testProductOne.CategoryID, testProductOne.Price, testProductOne.Quantity, testProductOne.CreatedAt).
 			AddRow(testProductTwo.ID, testProductTwo.Name, testProductTwo.Description, testProductTwo.ImageURL, testProductTwo.CategoryID, testProductTwo.Price, testProductTwo.Quantity, testProductTwo.CreatedAt)
 
-		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 1).WillReturnRows(mockRows)
+		mock.ExpectQuery(selectQuery).WithArgs(createdAfter, 10).WillReturnRows(mockRows)
 		products, err := repo.ListProducts(ctx, createdAfter, -1)
 
 		assert.NoError(t, err)
@@ -188,7 +193,7 @@ func TestCreateProduct(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewProductRepo(db)
+	repo := NewProductRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	insertQuery := regexp.QuoteMeta(
@@ -222,7 +227,7 @@ func TestCreateProduct(t *testing.T) {
 
 		err := repo.CreateProduct(ctx, &testProductOne)
 		assert.Error(t, err)
-		expectedErrMsg := "createProduct: no rows affected: not found"
+		expectedErrMsg := "createProduct: no rows affected: resource not found"
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
@@ -245,7 +250,7 @@ func TestUpdateProduct(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewProductRepo(db)
+	repo := NewProductRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	updateQuery := regexp.QuoteMeta(
@@ -280,7 +285,7 @@ func TestUpdateProduct(t *testing.T) {
 
 		err := repo.UpdateProduct(ctx, &testProductOne)
 		assert.Error(t, err)
-		expectedErrMsg := "updateProduct: no rows affected: not found"
+		expectedErrMsg := "updateProduct: no rows affected: resource not found"
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
@@ -303,7 +308,7 @@ func TestDeleteProduct(t *testing.T) {
 	defer mockDB.Close()
 
 	db := sqlx.NewDb(mockDB, "sqlmock")
-	repo := NewProductRepo(db)
+	repo := NewProductRepo(db, testMinLimit, testMaxLimit)
 	ctx := t.Context()
 
 	deleteQuery := regexp.QuoteMeta(`DELETE FROM products WHERE id = $1`)
@@ -334,7 +339,7 @@ func TestDeleteProduct(t *testing.T) {
 
 		err := repo.DeleteProduct(ctx, testProductOne.ID)
 		assert.Error(t, err)
-		expectedErrMsg := "deleteProduct: no rows affected: not found"
+		expectedErrMsg := "deleteProduct: no rows affected: resource not found"
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Equal(t, expectedErrMsg, err.Error())
 	})
